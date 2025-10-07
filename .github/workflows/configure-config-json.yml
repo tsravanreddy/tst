@@ -227,40 +227,42 @@ jobs:
       - name: Manual git commit and push
         shell: pwsh
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          
-          # Add any remaining changes
-          git add .
-          
-          # Check if there are changes to commit
-          $changes = git diff --cached --name-only
-          if ($changes) {
-            Write-Host "Changes to commit:"
-            $changes | ForEach-Object { Write-Host "  - $_" }
-            
-            git commit -m " updated"
-            
-            git push
-            Write-Host "Changes committed and pushed"
-          } else {
-            Write-Host "No changes to commit"
-          }
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action"
+
+            $branch = "update-config-${{ github.run_id }}"
+            git checkout -b $branch
+            git add .
+            $changes = git diff --cached --name-only
+            if ($changes) {
+              Write-Host "Changes to commit:"
+              $changes | ForEach-Object { Write-Host "  - $_" }
+              git commit -m "Update config and project files from issue"
+              git push --set-upstream origin $branch
+              Write-Host "Changes committed and branch pushed: $branch"
+            } else {
+              Write-Host "No changes to commit"
+            }
 
       - name: Add comment and close issue
         uses: actions/github-script@v7
         with:
           script: |
-            const issue_number = context.payload.issue.number;
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issue_number,
-              body: `updated`
-            });
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issue_number,
-              state: 'closed'
-            });
+              const issue_number = context.payload.issue.number;
+              const branch = `update-config-${process.env.GITHUB_RUN_ID}`;
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue_number,
+                body: `A pull request has been created for your configuration update: [View PR](https://github.com/${context.repo.owner}/${context.repo.repo}/pulls)`
+              });
+              // Create a PR from the branch to the default branch
+              await github.rest.pulls.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'Update config and project files from issue',
+                head: branch,
+                base: context.payload.repository.default_branch,
+                body: `Automated PR to update config and project files from issue #${issue_number}`
+              });
+              // Optionally, do not close the issue until PR is merged
