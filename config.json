@@ -1,6 +1,6 @@
 {
-  "driver_name": "",
-  "version": "",
-  "instrument_model": "",
-  "manufacturer": ""
+  "driver_name": "DCp",
+  "version": "1.0.0",
+  "instrument_model": "model",
+  "manufacturer": "acmp"
 }
